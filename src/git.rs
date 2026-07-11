@@ -1,8 +1,9 @@
 use crate::cli::ChangeSelection;
 use anyhow::{Context, Result, bail};
 use std::{
+    io::Write,
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Stdio},
 };
 
 pub struct Repository {
@@ -16,6 +17,35 @@ pub struct Snapshot {
 }
 
 impl Repository {
+    pub fn has_staged_changes(&self) -> Result<bool> {
+        Ok(!self
+            .git(&["diff", "--cached", "--name-only"])?
+            .trim()
+            .is_empty())
+    }
+
+    pub fn commit(&self, message: &str) -> Result<()> {
+        let mut child = Command::new("git")
+            .arg("-C")
+            .arg(&self.root)
+            .args(["commit", "--file", "-"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .context("failed to start git commit")?;
+        child
+            .stdin
+            .take()
+            .context("git commit stdin unavailable")?
+            .write_all(message.as_bytes())?;
+        let status = child.wait()?;
+        if !status.success() {
+            bail!("git commit failed with {status}");
+        }
+        Ok(())
+    }
+
     pub fn discover(path: Option<&Path>) -> Result<Self> {
         let cwd = path.unwrap_or_else(|| Path::new("."));
         let out = Command::new("git")
@@ -57,7 +87,11 @@ impl Repository {
         };
         let truncated = diff.len() > limit;
         if truncated {
-            diff.truncate(diff.floor_char_boundary(limit));
+            let mut boundary = limit;
+            while !diff.is_char_boundary(boundary) {
+                boundary -= 1;
+            }
+            diff.truncate(boundary);
             diff.push_str("\n\n[diff truncated by gitty]\n");
         }
         Ok(Snapshot {

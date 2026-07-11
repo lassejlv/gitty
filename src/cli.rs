@@ -28,6 +28,12 @@ pub struct Cli {
     /// Extra author intent or context.
     #[arg(long)]
     pub hint: Option<String>,
+    /// Force a Conventional Commit type (for example feat or fix).
+    #[arg(long = "type", value_name = "TYPE")]
+    pub commit_type: Option<String>,
+    /// Force a Conventional Commit scope.
+    #[arg(long, value_name = "SCOPE")]
+    pub scope: Option<String>,
     /// Number of alternatives.
     #[arg(short='n', long, default_value_t=1, value_parser=clap::value_parser!(u8).range(1..=5))]
     pub candidates: u8,
@@ -40,6 +46,15 @@ pub struct Cli {
     /// Emit a JSON array.
     #[arg(long)]
     pub json: bool,
+    /// Copy the first generated candidate to the clipboard.
+    #[arg(long)]
+    pub copy: bool,
+    /// Print the complete model prompt without contacting a provider.
+    #[arg(long)]
+    pub dry_run: bool,
+    /// Create a Git commit from staged changes using the generated message.
+    #[arg(long, conflicts_with_all=["all", "json", "dry_run"])]
+    pub commit: bool,
     /// Suppress progress output.
     #[arg(short, long)]
     pub quiet: bool,
@@ -75,4 +90,6 @@ pub enum Commands {
         #[arg(value_enum)]
         shell: Shell,
     },
+    /// Show which supported AI CLIs are installed.
+    Providers,
 }

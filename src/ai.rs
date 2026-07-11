@@ -104,12 +104,21 @@ impl Provider {
             Ok(stdout)
         }
     }
-    fn binary(self) -> &'static str {
+    pub fn binary(self) -> &'static str {
         match self {
             Self::Codex => "codex",
             Self::Claude => "claude",
             Self::Opencode => "opencode",
         }
+    }
+}
+
+pub fn print_provider_status() {
+    for provider in [Provider::Codex, Provider::Claude, Provider::Opencode] {
+        let status = which::which(provider.binary())
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|_| "not installed".to_owned());
+        println!("{:<12} {status}", provider.to_string());
     }
 }
 impl fmt::Display for Provider {
