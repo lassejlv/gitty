@@ -52,6 +52,9 @@ pub struct Cli {
     /// Pick, edit, regenerate, copy, or commit candidates interactively.
     #[arg(short = 'i', long, conflicts_with_all = ["json", "dry_run", "quiet"], global = true)]
     pub interactive: bool,
+    /// Send detected credentials to the provider without redaction.
+    #[arg(long, global = true)]
+    pub allow_secrets: bool,
     /// Print the complete model prompt without contacting a provider.
     #[arg(long, global = true)]
     pub dry_run: bool,

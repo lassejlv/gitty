@@ -24,20 +24,22 @@ pub enum Provider {
 }
 
 impl Provider {
-    pub fn resolve(choice: ProviderChoice) -> Result<Self> {
+    pub fn resolve_all(choice: ProviderChoice) -> Result<Vec<Self>> {
         let choices: &[Provider] = match choice {
             ProviderChoice::Auto => &[Self::Codex, Self::Claude, Self::Opencode],
             ProviderChoice::Codex => &[Self::Codex],
             ProviderChoice::Claude => &[Self::Claude],
             ProviderChoice::Opencode => &[Self::Opencode],
         };
-        choices
+        let providers: Vec<Self> = choices
             .iter()
             .copied()
-            .find(|p| which::which(p.binary()).is_ok())
-            .ok_or_else(|| {
-                anyhow::anyhow!("no supported AI CLI found; install codex, claude, or opencode")
-            })
+            .filter(|p| which::which(p.binary()).is_ok())
+            .collect();
+        if providers.is_empty() {
+            bail!("no supported AI CLI found; install codex, claude, or opencode");
+        }
+        Ok(providers)
     }
 
     pub fn generate(self, repo: &Path, prompt: &str, model: Option<&str>) -> Result<String> {

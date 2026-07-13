@@ -15,6 +15,7 @@ pub struct Snapshot {
     pub label: &'static str,
     pub truncated: bool,
     pub includes_all_changes: bool,
+    pub redactions: usize,
 }
 
 impl Repository {
@@ -157,6 +158,7 @@ impl Repository {
             label,
             truncated,
             includes_all_changes,
+            redactions: 0,
         })
     }
 

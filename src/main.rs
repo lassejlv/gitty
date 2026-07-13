@@ -7,9 +7,10 @@ mod git;
 mod interactive;
 mod message;
 mod prompt;
+mod secrets;
 mod ui;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Result, bail};
 use clap::{CommandFactory, Parser};
 use clap_complete::generate;
 use cli::{Cli, Commands, ConfigCommands};
@@ -95,13 +96,18 @@ fn run() -> Result<()> {
     if commit_requested && candidates != 1 && !cli.interactive {
         bail!("--commit requires exactly one candidate");
     }
-    let snapshot = repo.snapshot(cli.effective_changes(), max_diff_bytes)?;
+    let mut snapshot = repo.snapshot(cli.effective_changes(), max_diff_bytes)?;
     if snapshot.diff.trim().is_empty() {
         if snapshot.status.trim().is_empty() {
             ui::nothing_to_do();
             return Ok(());
         }
         bail!("changes exist but Git produced no readable diff");
+    }
+    if !cli.allow_secrets {
+        let redacted = secrets::redact(&snapshot.diff);
+        snapshot.diff = redacted.text;
+        snapshot.redactions = redacted.count;
     }
     if let Some(Commands::Diff { stat }) = &cli.command {
         diff_ui::render(&snapshot, *stat);
@@ -135,14 +141,18 @@ fn run() -> Result<()> {
     if cli.interactive {
         interactive::ensure_terminal()?;
     }
-    let provider = ai::Provider::resolve(provider_choice)?;
-    if !cli.quiet {
-        ui::generating(provider, snapshot.label);
-    }
+    let providers = ai::Provider::resolve_all(provider_choice)?;
+    let mut preferred_provider = 0;
     let (messages, selected_action) = loop {
-        let raw = provider
-            .generate(&repo.root, &prompt, model)
-            .with_context(|| format!("{provider} could not generate a commit message"))?;
+        let raw = generate_with_fallback(
+            &providers,
+            &mut preferred_provider,
+            &repo,
+            &prompt,
+            model,
+            snapshot.label,
+            cli.quiet,
+        )?;
         let generated = message::parse_candidates(&raw, candidates)?;
         if !cli.interactive {
             break (generated, None);
@@ -151,11 +161,7 @@ fn run() -> Result<()> {
             interactive::Decision::Accept { message, action } => {
                 break (vec![message], Some(action));
             }
-            interactive::Decision::Regenerate => {
-                if !cli.quiet {
-                    ui::generating(provider, snapshot.label);
-                }
-            }
+            interactive::Decision::Regenerate => {}
             interactive::Decision::Cancel => return Ok(()),
         }
     };
@@ -214,4 +220,42 @@ fn run() -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn generate_with_fallback(
+    providers: &[ai::Provider],
+    preferred: &mut usize,
+    repo: &git::Repository,
+    prompt: &str,
+    model: Option<&str>,
+    label: &str,
+    quiet: bool,
+) -> Result<String> {
+    let mut failures = Vec::new();
+    for offset in 0..providers.len() {
+        let index = (*preferred + offset) % providers.len();
+        let provider = providers[index];
+        if !quiet {
+            ui::generating(provider, label);
+        }
+        match provider.generate(&repo.root, prompt, model) {
+            Ok(output) => {
+                *preferred = index;
+                return Ok(output);
+            }
+            Err(error) => {
+                failures.push(format!("{provider}: {error:#}"));
+                if let Some(next) = providers.get((*preferred + offset + 1) % providers.len())
+                    && offset + 1 < providers.len()
+                    && !quiet
+                {
+                    ui::fallback(provider, &error, *next);
+                }
+            }
+        }
+    }
+    bail!(
+        "all available providers failed:\n  {}",
+        failures.join("\n  ")
+    )
 }

@@ -52,6 +52,7 @@ Message language: {language}
 Allowed types: {allowed_types}
 Allowed scopes: {allowed_scopes}
 Diff truncated: {truncated}
+Secrets redacted: {redactions}
 <git_status>
 {status}</git_status>
 <git_diff>
@@ -65,6 +66,7 @@ Diff truncated: {truncated}
             allowed_types = allowed_types,
             allowed_scopes = allowed_scopes,
             truncated = self.snapshot.truncated,
+            redactions = self.snapshot.redactions,
             status = self.snapshot.status,
             diff = self.snapshot.diff
         )
@@ -90,6 +92,7 @@ mod tests {
             label: "staged changes",
             truncated: false,
             includes_all_changes: false,
+            redactions: 0,
         };
         let prompt = Request {
             snapshot: &snapshot,

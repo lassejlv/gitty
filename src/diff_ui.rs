@@ -18,6 +18,13 @@ pub fn render(snapshot: &Snapshot, stat_only: bool) {
     if snapshot.truncated {
         println!("\n  {} Diff limited by max_diff_bytes", style("!").yellow());
     }
+    if snapshot.redactions > 0 {
+        println!(
+            "  {} {} potential secret(s) redacted from this view",
+            style("●").yellow(),
+            snapshot.redactions
+        );
+    }
     if stat_only {
         return;
     }

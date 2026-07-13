@@ -28,6 +28,19 @@ pub fn generating(provider: Provider, changes: &str) {
     );
 }
 
+pub fn fallback(provider: Provider, error: &anyhow::Error, next: Provider) {
+    let detail = error.to_string();
+    let detail = detail.lines().next().unwrap_or("unknown error");
+    eprintln!(
+        "{} {} failed: {}\n  {} trying {}…",
+        style("!").yellow().bold(),
+        provider,
+        style(detail).dim(),
+        style("↳").cyan(),
+        style(next).bold()
+    );
+}
+
 pub fn success(message: &str) {
     eprintln!("{} {message}", style("✓").green().bold());
 }

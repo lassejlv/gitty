@@ -12,7 +12,8 @@ gitty gen
 
 By default, gitty uses staged changes when they exist; otherwise it includes all
 working-tree changes and untracked text files. It auto-detects Codex, then Claude
-Code, then OpenCode.
+Code, then OpenCode. In auto mode, a failed or unauthenticated provider falls
+through to the next installed backend; an explicit `--provider` never falls back.
 
 ```bash
 gitty gen --provider claude
@@ -42,6 +43,10 @@ gitty diff          # staged changes when available, otherwise all changes
 gitty diff --all    # staged, unstaged, and untracked changes
 gitty diff --stat   # compact file and line summary
 ```
+
+Potential credentials are redacted before the diff reaches any provider. Use
+`--allow-secrets` only when sending the raw diff is genuinely intentional;
+`gitty diff` shows the same redacted payload used for generation.
 
 Interactive mode generates three candidates by default, then lets you select,
 edit, regenerate, copy, commit, or commit and push without leaving the terminal:
