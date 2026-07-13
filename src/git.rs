@@ -46,6 +46,17 @@ impl Repository {
         Ok(())
     }
 
+    pub fn stage_all(&self) -> Result<()> {
+        let status = Command::new("git")
+            .arg("-C")
+            .arg(&self.root)
+            .args(["add", "--all"])
+            .status()
+            .context("failed to stage all changes")?;
+        if !status.success() { bail!("git add --all failed with {status}"); }
+        Ok(())
+    }
+
     pub fn ensure_push_target(&self) -> Result<()> {
         let branch = self.git(&["branch", "--show-current"])?;
         if branch.trim().is_empty() {

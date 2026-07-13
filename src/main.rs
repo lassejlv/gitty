@@ -3,6 +3,7 @@ mod cli;
 mod clipboard;
 mod config;
 mod git;
+mod interactive;
 mod message;
 mod prompt;
 mod ui;
@@ -75,7 +76,10 @@ fn run() -> Result<()> {
         .as_deref()
         .or(settings.commit_type.as_deref());
     let scope = cli.scope.as_deref().or(settings.scope.as_deref());
-    let candidates = cli.candidates.or(settings.candidates).unwrap_or(1);
+    let mut candidates = cli.candidates.or(settings.candidates).unwrap_or(1);
+    if cli.interactive && candidates == 1 {
+        candidates = 3;
+    }
     let max_diff_bytes = cli
         .max_diff_bytes
         .or(settings.max_diff_bytes)
@@ -85,21 +89,26 @@ fn run() -> Result<()> {
     {
         bail!("--type and --scope require --style conventional");
     }
-    if cli.commit && candidates != 1 {
+    let commit_requested = cli.commit || cli.push;
+    if commit_requested && candidates != 1 && !cli.interactive {
         bail!("--commit requires exactly one candidate");
     }
-    if cli.commit && matches!(cli.effective_changes(), cli::ChangeSelection::All) {
-        bail!("--commit cannot use all changes; stage what you want and use --changes staged");
-    }
-    if cli.commit && !repo.has_staged_changes()? {
-        bail!("--commit requires staged changes");
+    if commit_requested
+        && !matches!(cli.effective_changes(), cli::ChangeSelection::All)
+        && !repo.has_staged_changes()?
+    {
+        bail!("nothing is staged; use --all to stage, commit, and include every change");
     }
     if cli.push {
         repo.ensure_push_target()?;
     }
     let snapshot = repo.snapshot(cli.effective_changes(), max_diff_bytes)?;
     if snapshot.diff.trim().is_empty() {
-        bail!("no changes found (stage files, or pass --all to include unstaged changes)");
+        if snapshot.status.trim().is_empty() {
+            ui::nothing_to_do();
+            return Ok(());
+        }
+        bail!("changes exist but Git produced no readable diff");
     }
     let request = prompt::Request {
         snapshot: &snapshot,
@@ -117,27 +126,68 @@ fn run() -> Result<()> {
         print!("{prompt}");
         return Ok(());
     }
+    if cli.interactive {
+        interactive::ensure_terminal()?;
+    }
     let provider = ai::Provider::resolve(provider_choice)?;
     if !cli.quiet {
         ui::generating(provider, snapshot.label);
     }
-    let raw = provider
-        .generate(&repo.root, &prompt, model)
-        .with_context(|| format!("{provider} could not generate a commit message"))?;
-    let messages = message::parse_candidates(&raw, candidates)?;
-    if cli.copy {
+    let (messages, selected_action) = loop {
+        let raw = provider
+            .generate(&repo.root, &prompt, model)
+            .with_context(|| format!("{provider} could not generate a commit message"))?;
+        let generated = message::parse_candidates(&raw, candidates)?;
+        if !cli.interactive {
+            break (generated, None);
+        }
+        match interactive::choose(generated)? {
+            interactive::Decision::Accept { message, action } => {
+                break (vec![message], Some(action));
+            }
+            interactive::Decision::Regenerate => {
+                if !cli.quiet {
+                    ui::generating(provider, snapshot.label);
+                }
+            }
+            interactive::Decision::Cancel => return Ok(()),
+        }
+    };
+    let action = selected_action.unwrap_or(interactive::Action::Print);
+    let should_copy = cli.copy || matches!(action, interactive::Action::Copy);
+    let should_commit = commit_requested
+        || matches!(
+            action,
+            interactive::Action::Commit | interactive::Action::CommitAndPush
+        );
+    let should_push = cli.push || matches!(action, interactive::Action::CommitAndPush);
+    if should_commit && !cli.commit {
+        if !matches!(cli.effective_changes(), cli::ChangeSelection::All)
+            && !repo.has_staged_changes()?
+        {
+            bail!("nothing is staged; choose commit and push after staging, or run with --all");
+        }
+    }
+    if should_push && !cli.push {
+        repo.ensure_push_target()?;
+    }
+    if should_copy {
         clipboard::copy(&messages[0])?;
         if !cli.quiet {
             ui::success("Copied first candidate to clipboard");
         }
     }
-    if cli.commit {
+    if should_commit {
+        if matches!(cli.effective_changes(), cli::ChangeSelection::All) {
+            repo.stage_all()?;
+            if !cli.quiet { ui::success("Staged all changes"); }
+        }
         repo.commit(&messages[0])?;
         if !cli.quiet {
             ui::success("Created commit");
         }
     }
-    if cli.push {
+    if should_push {
         repo.push()?;
         if !cli.quiet {
             ui::success("Pushed current branch");

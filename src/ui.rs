@@ -3,7 +3,7 @@ use console::style;
 
 pub fn about() {
     println!(
-        "{} {}\n\n{}\n\n{}\n  gitty <command> [options]\n\n{}\n  {}  Generate a commit message\n  {}  Show installed AI backends\n  {}  Create or inspect configuration\n  {}  Generate shell completions\n\n{}\n  git add src/\n  gitty gen\n  gitty gen --commit --push\n\n{}",
+        "{} {}\n\n{}\n\n{}\n  gitty <command> [options]\n\n{}\n  {}  Generate a commit message\n  {}  Show installed AI backends\n  {}  Create or inspect configuration\n  {}  Generate shell completions\n\n{}\n  git add src/\n  gitty gen\n  gitty gen --interactive\n  gitty gen --commit --push\n\n{}",
         style("gitty").bold().cyan(),
         style(env!("CARGO_PKG_VERSION")).dim(),
         style("AI commit messages that don't suck.").bold(),
@@ -29,4 +29,8 @@ pub fn generating(provider: Provider, changes: &str) {
 
 pub fn success(message: &str) {
     eprintln!("{} {message}", style("✓").green().bold());
+}
+
+pub fn nothing_to_do() {
+    eprintln!("{} Working tree is clean — nothing to generate.", style("✓").green().bold());
 }

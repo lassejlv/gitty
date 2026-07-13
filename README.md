@@ -20,6 +20,7 @@ gitty generate --provider opencode --model anthropic/claude-sonnet-4-5
 gitty generate --all --style detailed --hint "fixes the startup race"
 gitty generate --type feat --scope cli
 gitty generate -n 3
+gitty gen --interactive
 gitty generate --json
 gitty generate --copy
 gitty generate --dry-run
@@ -32,11 +33,19 @@ Running bare `gitty` prints the command overview. Use `gitty gen` (or the long
 form `gitty generate`) for generation; global options work before or after the
 subcommand.
 
-Add `--commit` to create a commit directly from staged changes after generation.
-Add `--push` to push that commit to the current branch's configured upstream.
-The command refuses unstaged-only input, multiple candidates, detached HEAD, and
-branches without an upstream. Without those explicit flags, gitty never modifies
-the repository or remote.
+Interactive mode generates three candidates by default, then lets you select,
+edit, regenerate, copy, commit, or commit and push without leaving the terminal:
+
+```bash
+git add src/
+gitty gen -i
+```
+
+Add `--commit` to commit staged changes, or combine it with `--all` to stage and
+commit every visible change after generation succeeds. `--push` implies commit,
+so `gitty gen --all --push` is the shortest full workflow. Detached HEAD and
+branches without an upstream still fail before generation. Without these flags,
+gitty never modifies the repository or remote.
 
 Provider subprocesses run non-interactively; Codex uses a read-only sandbox,
 Claude denies tool requests, and OpenCode uses its plan agent. Use `--dry-run` to

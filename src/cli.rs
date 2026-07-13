@@ -49,14 +49,17 @@ pub struct Cli {
     /// Copy the first generated candidate to the clipboard.
     #[arg(long, global = true)]
     pub copy: bool,
+    /// Pick, edit, regenerate, copy, or commit candidates interactively.
+    #[arg(short = 'i', long, conflicts_with_all = ["json", "dry_run", "quiet"], global = true)]
+    pub interactive: bool,
     /// Print the complete model prompt without contacting a provider.
     #[arg(long, global = true)]
     pub dry_run: bool,
     /// Create a Git commit from staged changes using the generated message.
-    #[arg(long, conflicts_with_all=["all", "json", "dry_run"], global = true)]
+    #[arg(long, conflicts_with_all = ["json", "dry_run"], global = true)]
     pub commit: bool,
-    /// Push the new commit to the current branch's configured upstream.
-    #[arg(long, requires = "commit", global = true)]
+    /// Commit and push to the current branch's configured upstream.
+    #[arg(long, conflicts_with_all = ["json", "dry_run"], global = true)]
     pub push: bool,
     /// Suppress progress output.
     #[arg(short, long, global = true)]
@@ -117,4 +120,15 @@ pub enum ConfigCommands {
     },
     /// Show the merged effective configuration.
     Show,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn push_implies_commit_and_accepts_all() {
+        let cli = Cli::try_parse_from(["gitty", "gen", "--all", "--push"]).unwrap();
+        assert!(cli.all);
+        assert!(cli.push);
+    }
 }
