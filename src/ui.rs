@@ -32,5 +32,8 @@ pub fn success(message: &str) {
 }
 
 pub fn nothing_to_do() {
-    eprintln!("{} Working tree is clean — nothing to generate.", style("✓").green().bold());
+    eprintln!(
+        "{} Working tree is clean — nothing to generate.",
+        style("✓").green().bold()
+    );
 }

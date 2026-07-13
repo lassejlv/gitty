@@ -93,6 +93,14 @@ fn run() -> Result<()> {
     if commit_requested && candidates != 1 && !cli.interactive {
         bail!("--commit requires exactly one candidate");
     }
+    let snapshot = repo.snapshot(cli.effective_changes(), max_diff_bytes)?;
+    if snapshot.diff.trim().is_empty() {
+        if snapshot.status.trim().is_empty() {
+            ui::nothing_to_do();
+            return Ok(());
+        }
+        bail!("changes exist but Git produced no readable diff");
+    }
     if commit_requested
         && !matches!(cli.effective_changes(), cli::ChangeSelection::All)
         && !repo.has_staged_changes()?
@@ -101,14 +109,6 @@ fn run() -> Result<()> {
     }
     if cli.push {
         repo.ensure_push_target()?;
-    }
-    let snapshot = repo.snapshot(cli.effective_changes(), max_diff_bytes)?;
-    if snapshot.diff.trim().is_empty() {
-        if snapshot.status.trim().is_empty() {
-            ui::nothing_to_do();
-            return Ok(());
-        }
-        bail!("changes exist but Git produced no readable diff");
     }
     let request = prompt::Request {
         snapshot: &snapshot,
@@ -161,12 +161,12 @@ fn run() -> Result<()> {
             interactive::Action::Commit | interactive::Action::CommitAndPush
         );
     let should_push = cli.push || matches!(action, interactive::Action::CommitAndPush);
-    if should_commit && !cli.commit {
-        if !matches!(cli.effective_changes(), cli::ChangeSelection::All)
-            && !repo.has_staged_changes()?
-        {
-            bail!("nothing is staged; choose commit and push after staging, or run with --all");
-        }
+    if should_commit
+        && !cli.commit
+        && !matches!(cli.effective_changes(), cli::ChangeSelection::All)
+        && !repo.has_staged_changes()?
+    {
+        bail!("nothing is staged; choose commit and push after staging, or run with --all");
     }
     if should_push && !cli.push {
         repo.ensure_push_target()?;
@@ -180,7 +180,9 @@ fn run() -> Result<()> {
     if should_commit {
         if matches!(cli.effective_changes(), cli::ChangeSelection::All) {
             repo.stage_all()?;
-            if !cli.quiet { ui::success("Staged all changes"); }
+            if !cli.quiet {
+                ui::success("Staged all changes");
+            }
         }
         repo.commit(&messages[0])?;
         if !cli.quiet {

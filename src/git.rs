@@ -53,7 +53,9 @@ impl Repository {
             .args(["add", "--all"])
             .status()
             .context("failed to stage all changes")?;
-        if !status.success() { bail!("git add --all failed with {status}"); }
+        if !status.success() {
+            bail!("git add --all failed with {status}");
+        }
         Ok(())
     }
 
