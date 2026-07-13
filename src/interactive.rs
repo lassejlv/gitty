@@ -22,7 +22,7 @@ pub fn ensure_terminal() -> Result<()> {
     Ok(())
 }
 
-pub fn choose(messages: Vec<String>) -> Result<Decision> {
+pub fn choose(messages: Vec<String>, stages_all: bool) -> Result<Decision> {
     ensure_terminal()?;
     eprintln!();
     for (index, message) in messages.iter().enumerate() {
@@ -50,14 +50,18 @@ pub fn choose(messages: Vec<String>) -> Result<Decision> {
         }
         eprintln!("{} Pick a candidate number, r, or q.", style("!").yellow());
     };
-    action_menu(selected)
+    action_menu(selected, stages_all)
 }
 
-fn action_menu(mut message: String) -> Result<Decision> {
+fn action_menu(mut message: String, stages_all: bool) -> Result<Decision> {
     loop {
+        let (commit, push) = action_labels(stages_all);
         eprintln!(
             "{}",
-            style("[p]rint  [c]opy  co[m]mit  commit+p[u]sh  [e]dit  [r]egenerate  [q]uit").dim()
+            style(format!(
+                "[p]rint  [c]opy  {commit}  {push}  [e]dit  [r]egenerate  [q]uit"
+            ))
+            .dim()
         );
         match ask("Action [p]: ")?.to_ascii_lowercase().as_str() {
             "" | "p" => return accept(message, Action::Print),
@@ -72,6 +76,14 @@ fn action_menu(mut message: String) -> Result<Decision> {
             "q" => return Ok(Decision::Cancel),
             _ => eprintln!("{} Unknown action.", style("!").yellow()),
         }
+    }
+}
+
+fn action_labels(stages_all: bool) -> (&'static str, &'static str) {
+    if stages_all {
+        ("stage+co[m]mit", "stage+commit+p[u]sh")
+    } else {
+        ("co[m]mit", "commit+p[u]sh")
     }
 }
 
@@ -127,5 +139,14 @@ mod tests {
             indent("feat: add picker\n\nExplain why"),
             "    feat: add picker\n    \n    Explain why"
         );
+    }
+
+    #[test]
+    fn labels_all_change_actions_as_staging() {
+        assert_eq!(
+            action_labels(true),
+            ("stage+co[m]mit", "stage+commit+p[u]sh")
+        );
+        assert_eq!(action_labels(false), ("co[m]mit", "commit+p[u]sh"));
     }
 }

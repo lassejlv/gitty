@@ -147,7 +147,7 @@ fn run() -> Result<()> {
         if !cli.interactive {
             break (generated, None);
         }
-        match interactive::choose(generated)? {
+        match interactive::choose(generated, snapshot.includes_all_changes)? {
             interactive::Decision::Accept { message, action } => {
                 break (vec![message], Some(action));
             }
@@ -169,7 +169,7 @@ fn run() -> Result<()> {
     let should_push = cli.push || matches!(action, interactive::Action::CommitAndPush);
     if should_commit
         && !cli.commit
-        && !matches!(cli.effective_changes(), cli::ChangeSelection::All)
+        && !snapshot.includes_all_changes
         && !repo.has_staged_changes()?
     {
         bail!("nothing is staged; choose commit and push after staging, or run with --all");
@@ -184,7 +184,9 @@ fn run() -> Result<()> {
         }
     }
     if should_commit {
-        if matches!(cli.effective_changes(), cli::ChangeSelection::All) {
+        if matches!(cli.effective_changes(), cli::ChangeSelection::All)
+            || (!cli.commit && snapshot.includes_all_changes)
+        {
             repo.stage_all()?;
             if !cli.quiet {
                 ui::success("Staged all changes");

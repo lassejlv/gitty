@@ -14,6 +14,7 @@ pub struct Snapshot {
     pub diff: String,
     pub label: &'static str,
     pub truncated: bool,
+    pub includes_all_changes: bool,
 }
 
 impl Repository {
@@ -127,6 +128,7 @@ impl Repository {
             ChangeSelection::Auto => ChangeSelection::All,
             other => other,
         };
+        let includes_all_changes = matches!(selection, ChangeSelection::All);
         let (mut diff, status, label) = match selection {
             ChangeSelection::Staged => (
                 self.git(&["diff", "--cached", "--no-ext-diff", "--no-color"])?,
@@ -154,6 +156,7 @@ impl Repository {
             diff,
             label,
             truncated,
+            includes_all_changes,
         })
     }
 

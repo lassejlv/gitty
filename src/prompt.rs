@@ -89,6 +89,7 @@ mod tests {
             diff: "+feature".into(),
             label: "staged changes",
             truncated: false,
+            includes_all_changes: false,
         };
         let prompt = Request {
             snapshot: &snapshot,
