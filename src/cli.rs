@@ -11,8 +11,8 @@ use std::path::PathBuf;
 )]
 pub struct Cli {
     /// AI CLI to use. Auto tries Codex, Claude, then OpenCode.
-    #[arg(short, long, value_enum, default_value_t=ProviderChoice::Auto, env="GITTY_PROVIDER")]
-    pub provider: ProviderChoice,
+    #[arg(short, long, value_enum, env = "GITTY_PROVIDER")]
+    pub provider: Option<ProviderChoice>,
     /// Override the provider's configured model.
     #[arg(short, long, env = "GITTY_MODEL")]
     pub model: Option<String>,
@@ -23,8 +23,8 @@ pub struct Cli {
     #[arg(short = 'a', long, conflicts_with = "changes")]
     pub all: bool,
     /// Commit-message style.
-    #[arg(short, long, value_enum, default_value_t=MessageStyle::Conventional)]
-    pub style: MessageStyle,
+    #[arg(short, long, value_enum)]
+    pub style: Option<MessageStyle>,
     /// Extra author intent or context.
     #[arg(long)]
     pub hint: Option<String>,
@@ -35,11 +35,11 @@ pub struct Cli {
     #[arg(long, value_name = "SCOPE")]
     pub scope: Option<String>,
     /// Number of alternatives.
-    #[arg(short='n', long, default_value_t=1, value_parser=clap::value_parser!(u8).range(1..=5))]
-    pub candidates: u8,
+    #[arg(short='n', long, value_parser=clap::value_parser!(u8).range(1..=5))]
+    pub candidates: Option<u8>,
     /// Maximum diff bytes sent to the model.
-    #[arg(long, default_value_t = 120_000)]
-    pub max_diff_bytes: usize,
+    #[arg(long)]
+    pub max_diff_bytes: Option<usize>,
     /// Repository path.
     #[arg(short = 'C', long)]
     pub repo: Option<PathBuf>,
@@ -55,6 +55,9 @@ pub struct Cli {
     /// Create a Git commit from staged changes using the generated message.
     #[arg(long, conflicts_with_all=["all", "json", "dry_run"])]
     pub commit: bool,
+    /// Push the new commit to the current branch's configured upstream.
+    #[arg(long, requires = "commit")]
+    pub push: bool,
     /// Suppress progress output.
     #[arg(short, long)]
     pub quiet: bool,
@@ -77,8 +80,10 @@ pub enum ChangeSelection {
     Staged,
     All,
 }
-#[derive(Debug, Clone, Copy, ValueEnum)]
+#[derive(Debug, Clone, Copy, ValueEnum, serde::Deserialize, serde::Serialize, Default)]
+#[serde(rename_all = "lowercase")]
 pub enum MessageStyle {
+    #[default]
     Conventional,
     Plain,
     Detailed,
@@ -92,4 +97,21 @@ pub enum Commands {
     },
     /// Show which supported AI CLIs are installed.
     Providers,
+    /// Create or inspect gitty configuration.
+    Config {
+        #[command(subcommand)]
+        command: ConfigCommands,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ConfigCommands {
+    /// Create a documented config file.
+    Init {
+        /// Write the user config instead of .gitty.toml in this repository.
+        #[arg(long)]
+        global: bool,
+    },
+    /// Show the merged effective configuration.
+    Show,
 }

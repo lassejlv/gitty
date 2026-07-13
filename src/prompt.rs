@@ -7,6 +7,9 @@ pub struct Request<'a> {
     pub candidates: u8,
     pub commit_type: Option<&'a str>,
     pub scope: Option<&'a str>,
+    pub language: Option<&'a str>,
+    pub allowed_types: Option<&'a [String]>,
+    pub allowed_scopes: Option<&'a [String]>,
 }
 impl Request<'_> {
     pub fn render(&self) -> String {
@@ -27,6 +30,9 @@ impl Request<'_> {
             (None, Some(scope)) => format!("Required scope: {scope}"),
             (None, None) => "No required type or scope".to_owned(),
         };
+        let language = self.language.unwrap_or("English");
+        let allowed_types = list_or_any(self.allowed_types);
+        let allowed_scopes = list_or_any(self.allowed_scopes);
         format!(
             r#"You are an expert maintainer writing a Git commit message from a repository snapshot.
 
@@ -42,6 +48,9 @@ Rules:
 
 Author hint: {hint}
 Conventional constraints: {conventional_hint}
+Message language: {language}
+Allowed types: {allowed_types}
+Allowed scopes: {allowed_scopes}
 Diff truncated: {truncated}
 <git_status>
 {status}</git_status>
@@ -52,11 +61,21 @@ Diff truncated: {truncated}
             style = style,
             hint = self.hint.unwrap_or("none"),
             conventional_hint = conventional_hint,
+            language = language,
+            allowed_types = allowed_types,
+            allowed_scopes = allowed_scopes,
             truncated = self.snapshot.truncated,
             status = self.snapshot.status,
             diff = self.snapshot.diff
         )
     }
+}
+
+fn list_or_any(values: Option<&[String]>) -> String {
+    values
+        .filter(|values| !values.is_empty())
+        .map(|values| values.join(", "))
+        .unwrap_or_else(|| "any appropriate value".into())
 }
 
 #[cfg(test)]
@@ -78,11 +97,16 @@ mod tests {
             candidates: 2,
             commit_type: Some("feat"),
             scope: Some("cli"),
+            language: Some("Danish"),
+            allowed_types: Some(&["feat".into(), "fix".into()]),
+            allowed_scopes: None,
         }
         .render();
         assert!(prompt.contains("Author hint: add clipboard support"));
         assert!(prompt.contains("Required type: feat"));
         assert!(prompt.contains("Required scope: cli"));
         assert!(prompt.contains("Return exactly 2 candidate(s)"));
+        assert!(prompt.contains("Message language: Danish"));
+        assert!(prompt.contains("Allowed types: feat, fix"));
     }
 }

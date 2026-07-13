@@ -46,6 +46,47 @@ impl Repository {
         Ok(())
     }
 
+    pub fn ensure_push_target(&self) -> Result<()> {
+        let branch = self.git(&["branch", "--show-current"])?;
+        if branch.trim().is_empty() {
+            bail!("--push is unavailable in detached HEAD state");
+        }
+        let upstream = Command::new("git")
+            .arg("-C")
+            .arg(&self.root)
+            .args([
+                "rev-parse",
+                "--abbrev-ref",
+                "--symbolic-full-name",
+                "@{upstream}",
+            ])
+            .output()
+            .context("failed to inspect Git upstream")?;
+        if !upstream.status.success() {
+            bail!(
+                "current branch has no upstream; run `git push --set-upstream origin {}` once",
+                branch.trim()
+            );
+        }
+        Ok(())
+    }
+
+    pub fn push(&self) -> Result<()> {
+        let status = Command::new("git")
+            .arg("-C")
+            .arg(&self.root)
+            .arg("push")
+            .stdin(Stdio::null())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .status()
+            .context("failed to start git push")?;
+        if !status.success() {
+            bail!("git push failed with {status}");
+        }
+        Ok(())
+    }
+
     pub fn discover(path: Option<&Path>) -> Result<Self> {
         let cwd = path.unwrap_or_else(|| Path::new("."));
         let out = Command::new("git")

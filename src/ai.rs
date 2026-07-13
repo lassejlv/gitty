@@ -7,8 +7,10 @@ use std::{
     process::{Command, Stdio},
 };
 
-#[derive(Debug, Clone, Copy, ValueEnum)]
+#[derive(Debug, Clone, Copy, ValueEnum, serde::Deserialize, serde::Serialize, Default)]
+#[serde(rename_all = "lowercase")]
 pub enum ProviderChoice {
+    #[default]
     Auto,
     Codex,
     Claude,
