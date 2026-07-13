@@ -96,6 +96,12 @@ pub enum Commands {
     /// Generate a commit message from repository changes.
     #[command(visible_alias = "gen")]
     Generate,
+    /// Review the exact changes gitty would send to the provider.
+    Diff {
+        /// Show only the file and line summary.
+        #[arg(long)]
+        stat: bool,
+    },
     /// Generate shell completions.
     Completions {
         #[arg(value_enum)]

@@ -2,6 +2,7 @@ mod ai;
 mod cli;
 mod clipboard;
 mod config;
+mod diff_ui;
 mod git;
 mod interactive;
 mod message;
@@ -63,6 +64,7 @@ fn run() -> Result<()> {
             return Ok(());
         }
         Some(Commands::Generate) => {}
+        Some(Commands::Diff { .. }) => {}
         None => {}
     }
     let repo = git::Repository::discover(cli.repo.as_deref())?;
@@ -100,6 +102,10 @@ fn run() -> Result<()> {
             return Ok(());
         }
         bail!("changes exist but Git produced no readable diff");
+    }
+    if let Some(Commands::Diff { stat }) = &cli.command {
+        diff_ui::render(&snapshot, *stat);
+        return Ok(());
     }
     if commit_requested
         && !matches!(cli.effective_changes(), cli::ChangeSelection::All)

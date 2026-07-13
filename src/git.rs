@@ -117,7 +117,7 @@ impl Repository {
     }
 
     pub fn snapshot(&self, requested: ChangeSelection, limit: usize) -> Result<Snapshot> {
-        let status = self.git(&["status", "--short"])?;
+        let full_status = self.git(&["status", "--short"])?;
         let staged = !self
             .git(&["diff", "--cached", "--name-only"])?
             .trim()
@@ -127,16 +127,17 @@ impl Repository {
             ChangeSelection::Auto => ChangeSelection::All,
             other => other,
         };
-        let (mut diff, label) = match selection {
+        let (mut diff, status, label) = match selection {
             ChangeSelection::Staged => (
                 self.git(&["diff", "--cached", "--no-ext-diff", "--no-color"])?,
+                staged_status(&full_status),
                 "staged changes",
             ),
             _ => {
                 let mut all = self.git(&["diff", "--cached", "--no-ext-diff", "--no-color"])?;
                 all.push_str(&self.git(&["diff", "--no-ext-diff", "--no-color"])?);
                 all.push_str(&self.untracked()?);
-                (all, "all changes")
+                (all, full_status, "all changes")
             }
         };
         let truncated = diff.len() > limit;
@@ -200,5 +201,28 @@ impl Repository {
             );
         }
         Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+    }
+}
+
+fn staged_status(status: &str) -> String {
+    status
+        .lines()
+        .filter(|line| {
+            line.as_bytes()
+                .first()
+                .is_some_and(|code| *code != b' ' && *code != b'?')
+        })
+        .map(|line| format!("{line}\n"))
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn staged_status_excludes_unstaged_and_untracked_files() {
+        let status = "M  staged.rs\n M unstaged.rs\nMM both.rs\n?? new.rs\n";
+        assert_eq!(staged_status(status), "M  staged.rs\nMM both.rs\n");
     }
 }

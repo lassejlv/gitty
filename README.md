@@ -16,6 +16,8 @@ Code, then OpenCode.
 
 ```bash
 gitty gen --provider claude
+gitty diff
+gitty diff --all --stat
 gitty generate --provider opencode --model anthropic/claude-sonnet-4-5
 gitty generate --all --style detailed --hint "fixes the startup race"
 gitty generate --type feat --scope cli
@@ -32,6 +34,14 @@ gitty completions zsh > ~/.zfunc/_gitty
 Running bare `gitty` prints the command overview. Use `gitty gen` (or the long
 form `gitty generate`) for generation; global options work before or after the
 subcommand.
+
+Review exactly what will be sent to the provider before generating anything:
+
+```bash
+gitty diff          # staged changes when available, otherwise all changes
+gitty diff --all    # staged, unstaged, and untracked changes
+gitty diff --stat   # compact file and line summary
+```
 
 Interactive mode generates three candidates by default, then lets you select,
 edit, regenerate, copy, commit, or commit and push without leaving the terminal:
