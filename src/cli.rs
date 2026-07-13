@@ -11,55 +11,55 @@ use std::path::PathBuf;
 )]
 pub struct Cli {
     /// AI CLI to use. Auto tries Codex, Claude, then OpenCode.
-    #[arg(short, long, value_enum, env = "GITTY_PROVIDER")]
+    #[arg(short, long, value_enum, env = "GITTY_PROVIDER", global = true)]
     pub provider: Option<ProviderChoice>,
     /// Override the provider's configured model.
-    #[arg(short, long, env = "GITTY_MODEL")]
+    #[arg(short, long, env = "GITTY_MODEL", global = true)]
     pub model: Option<String>,
     /// Which changes to describe.
-    #[arg(long, value_enum, default_value_t=ChangeSelection::Auto)]
+    #[arg(long, value_enum, default_value_t=ChangeSelection::Auto, global = true)]
     pub changes: ChangeSelection,
     /// Include staged, unstaged, and untracked changes.
-    #[arg(short = 'a', long, conflicts_with = "changes")]
+    #[arg(short = 'a', long, conflicts_with = "changes", global = true)]
     pub all: bool,
     /// Commit-message style.
-    #[arg(short, long, value_enum)]
+    #[arg(short, long, value_enum, global = true)]
     pub style: Option<MessageStyle>,
     /// Extra author intent or context.
-    #[arg(long)]
+    #[arg(long, global = true)]
     pub hint: Option<String>,
     /// Force a Conventional Commit type (for example feat or fix).
-    #[arg(long = "type", value_name = "TYPE")]
+    #[arg(long = "type", value_name = "TYPE", global = true)]
     pub commit_type: Option<String>,
     /// Force a Conventional Commit scope.
-    #[arg(long, value_name = "SCOPE")]
+    #[arg(long, value_name = "SCOPE", global = true)]
     pub scope: Option<String>,
     /// Number of alternatives.
-    #[arg(short='n', long, value_parser=clap::value_parser!(u8).range(1..=5))]
+    #[arg(short='n', long, value_parser=clap::value_parser!(u8).range(1..=5), global = true)]
     pub candidates: Option<u8>,
     /// Maximum diff bytes sent to the model.
-    #[arg(long)]
+    #[arg(long, global = true)]
     pub max_diff_bytes: Option<usize>,
     /// Repository path.
-    #[arg(short = 'C', long)]
+    #[arg(short = 'C', long, global = true)]
     pub repo: Option<PathBuf>,
     /// Emit a JSON array.
-    #[arg(long)]
+    #[arg(long, global = true)]
     pub json: bool,
     /// Copy the first generated candidate to the clipboard.
-    #[arg(long)]
+    #[arg(long, global = true)]
     pub copy: bool,
     /// Print the complete model prompt without contacting a provider.
-    #[arg(long)]
+    #[arg(long, global = true)]
     pub dry_run: bool,
     /// Create a Git commit from staged changes using the generated message.
-    #[arg(long, conflicts_with_all=["all", "json", "dry_run"])]
+    #[arg(long, conflicts_with_all=["all", "json", "dry_run"], global = true)]
     pub commit: bool,
     /// Push the new commit to the current branch's configured upstream.
-    #[arg(long, requires = "commit")]
+    #[arg(long, requires = "commit", global = true)]
     pub push: bool,
     /// Suppress progress output.
-    #[arg(short, long)]
+    #[arg(short, long, global = true)]
     pub quiet: bool,
     #[command(subcommand)]
     pub command: Option<Commands>,
@@ -90,6 +90,9 @@ pub enum MessageStyle {
 }
 #[derive(Debug, Subcommand)]
 pub enum Commands {
+    /// Generate a commit message from repository changes.
+    #[command(visible_alias = "gen")]
+    Generate,
     /// Generate shell completions.
     Completions {
         #[arg(value_enum)]

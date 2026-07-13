@@ -7,7 +7,7 @@ you already have authenticated: Codex, Claude Code, or OpenCode.
 cargo install --git https://github.com/lassejlv/gitty
 
 git add src/
-gitty
+gitty gen
 ```
 
 By default, gitty uses staged changes when they exist; otherwise it includes all
@@ -15,18 +15,22 @@ working-tree changes and untracked text files. It auto-detects Codex, then Claud
 Code, then OpenCode.
 
 ```bash
-gitty --provider claude
-gitty --provider opencode --model anthropic/claude-sonnet-4-5
-gitty --all --style detailed --hint "fixes the startup race"
-gitty --type feat --scope cli
-gitty -n 3
-gitty --json
-gitty --copy
-gitty --dry-run
-gitty --commit --push
+gitty gen --provider claude
+gitty generate --provider opencode --model anthropic/claude-sonnet-4-5
+gitty generate --all --style detailed --hint "fixes the startup race"
+gitty generate --type feat --scope cli
+gitty generate -n 3
+gitty generate --json
+gitty generate --copy
+gitty generate --dry-run
+gitty generate --commit --push
 gitty providers
 gitty completions zsh > ~/.zfunc/_gitty
 ```
+
+Running bare `gitty` prints the command overview. Use `gitty gen` (or the long
+form `gitty generate`) for generation; global options work before or after the
+subcommand.
 
 Add `--commit` to create a commit directly from staged changes after generation.
 Add `--push` to push that commit to the current branch's configured upstream.

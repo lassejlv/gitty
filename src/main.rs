@@ -5,6 +5,7 @@ mod config;
 mod git;
 mod message;
 mod prompt;
+mod ui;
 
 use anyhow::{Context, Result, bail};
 use clap::{CommandFactory, Parser};
@@ -23,6 +24,10 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<()> {
+    if std::env::args_os().len() == 1 {
+        ui::about();
+        return Ok(());
+    }
     let cli = Cli::parse();
     match &cli.command {
         Some(Commands::Completions { shell }) => {
@@ -56,6 +61,7 @@ fn run() -> Result<()> {
             }
             return Ok(());
         }
+        Some(Commands::Generate) => {}
         None => {}
     }
     let repo = git::Repository::discover(cli.repo.as_deref())?;
@@ -113,11 +119,7 @@ fn run() -> Result<()> {
     }
     let provider = ai::Provider::resolve(provider_choice)?;
     if !cli.quiet {
-        eprintln!(
-            "{} asking {provider} to describe {}…",
-            console::style("gitty").bold(),
-            snapshot.label
-        );
+        ui::generating(provider, snapshot.label);
     }
     let raw = provider
         .generate(&repo.root, &prompt, model)
@@ -126,22 +128,19 @@ fn run() -> Result<()> {
     if cli.copy {
         clipboard::copy(&messages[0])?;
         if !cli.quiet {
-            eprintln!(
-                "{} copied first candidate to clipboard",
-                console::style("✓").green()
-            );
+            ui::success("Copied first candidate to clipboard");
         }
     }
     if cli.commit {
         repo.commit(&messages[0])?;
         if !cli.quiet {
-            eprintln!("{} created commit", console::style("✓").green());
+            ui::success("Created commit");
         }
     }
     if cli.push {
         repo.push()?;
         if !cli.quiet {
-            eprintln!("{} pushed current branch", console::style("✓").green());
+            ui::success("Pushed current branch");
         }
     }
     if cli.json {
